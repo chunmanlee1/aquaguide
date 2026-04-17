@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaGuide V4.7 - Cycle Fixed</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <style>
+        body { transition: background-color 0.3s ease; }
+        .card { border-radius: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .gradient-blue { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+        .content-area { height: calc(100vh - 170px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 font-sans">
+    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col shadow-2xl bg-white dark:bg-slate-800 transition-colors relative">
+        
+        <header class="gradient-blue text-white p-6 shadow-md z-10 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight"><i class="fas fa-fish mr-2"></i>AquaGuide <span class="text-xs font-normal opacity-70">V4.7</span></h1>
+                <p class="text-blue-100 text-xs opacity-80 uppercase tracking-widest">Master Your Aquarium</p>
+            </div>
+            <button @click="toggleDark" class="p-3 rounded-full bg-blue-500/50 hover:bg-blue-400 transition-colors">
+                <i :class="isDark ? 'fas fa-sun' : 'fas fa-moon'"></i>
+            </button>
+        </header>
+
+        <main class="content-area flex-grow p-4 mb-20 overflow-y-auto no-scrollbar">
+            
+            <div v-if="activeTab === 'home'" class="space-y-4">
+                <div class="relative h-44 rounded-3xl overflow-hidden shadow-lg mb-6">
+                    <img src="https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?auto=format&fit=crop&q=80&w=800" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-5 text-white">
+                        <p class="font-black text-xl leading-tight">正確開缸，<br>是養魚成功的唯一捷徑</p>
+                    </div>
+                </div>
+
+                <button @click="activeTab = 'setup'" class="card w-full p-5 bg-blue-600 text-white flex items-center justify-between">
+                    <div class="flex items-center"><i class="fas fa-vial-circle-check text-2xl mr-4"></i><span class="font-bold text-lg">開缸五部曲</span></div>
+                    <i class="fas fa-chevron-right opacity-50"></i>
+                </button>
+
+                <button @click="activeTab = 'cycle'" class="card w-full p-5 bg-yellow-400 border-b-4 border-yellow-600 flex items-center justify-between">
+                    <div class="flex items-center text-yellow-900"><i class="fas fa-bacteria text-2xl mr-4"></i><span class="font-bold text-lg">氮循環科學 / 測驗</span></div>
+                    <i class="fas fa-chevron-right text-yellow-700"></i>
+                </button>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <button @click="activeTab = 'calc'" class="card p-4 bg-white dark:bg-slate-700 border dark:border-slate-600 flex flex-col items-center"><i class="fas fa-calculator text-2xl text-blue-500 mb-2"></i><span class="text-sm font-bold dark:text-white">水量計算</span></button>
+                    <button @click="activeTab = 'health'" class="card p-4 bg-white dark:bg-slate-700 border dark:border-slate-600 flex flex-col items-center"><i class="fas fa-heart-pulse text-2xl text-red-500 mb-2"></i><span class="text-sm font-bold dark:text-white">病魚急救</span></button>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'cycle'" class="space-y-5">
+                <button @click="activeTab = 'home'" class="text-blue-600 font-bold px-2"><i class="fas fa-arrow-left mr-2"></i>返回</button>
+                
+                <div v-if="!quizStarted" class="space-y-5 px-2">
+                    <h2 class="text-2xl font-black dark:text-white">建立氮循環</h2>
+                    <div class="card p-5 bg-white dark:bg-slate-700 space-y-4 border dark:border-slate-600">
+                        <div v-for="(item, idx) in cycleInfo" :key="idx" class="flex items-start">
+                            <span :class="item.color" class="w-8 h-8 rounded-lg text-white flex items-center justify-center text-xs font-bold mr-4 shrink-0">{{idx+1}}</span>
+                            <div>
+                                <p class="font-bold text-sm dark:text-white">{{item.title}}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{{item.desc}}</p>
+                            </div>
+                        </div>
+                        <button @click="quizStarted = true" class="w-full mt-4 py-4 bg-yellow-400 text-yellow-950 font-black rounded-2xl shadow-lg border-b-4 border-yellow-600 active:scale-95 transition-transform">
+                            開始知識測驗 <i class="fas fa-play ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div v-else-if="!quizCompleted" class="space-y-4 px-2">
+                    <div class="flex justify-between items-end">
+                        <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Question {{quizIndex + 1}} / {{quizPool.length}}</p>
+                        <div class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">目前分數: {{quizScore}}</div>
+                    </div>
+                    <div class="card p-6 bg-white dark:bg-slate-700 border-2 border-blue-100 dark:border-slate-600">
+                        <p class="text-lg font-bold dark:text-white mb-6 leading-relaxed">{{ quizPool[quizIndex].q }}</p>
+                        <div class="space-y-3">
+                            <button v-for="(opt, i) in quizPool[quizIndex].a" :key="i" @click="handleQuiz(i)"
+                                class="w-full text-left p-4 border-2 rounded-2xl text-sm font-bold transition-all flex justify-between items-center"
+                                :class="userAnswers[quizIndex] === i ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'bg-slate-50 dark:bg-slate-800 dark:text-white border-transparent'">
+                                {{ opt }}
+                                <i v-if="userAnswers[quizIndex] === i" class="fas fa-check-circle"></i>
+                            </button>
+                        </div>
+                        <div class="flex gap-4 mt-8 pt-6 border-t dark:border-slate-600">
+                            <button @click="quizIndex--" :disabled="quizIndex === 0" class="flex-1 py-3 bg-slate-100 dark:bg-slate-600 dark:text-white rounded-xl text-xs font-bold disabled:opacity-30">上一題</button>
+                            <button v-if="quizIndex < quizPool.length - 1" @click="quizIndex++" :disabled="userAnswers[quizIndex] === null" class="flex-1 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold disabled:opacity-30">下一題</button>
+                            <button v-else @click="quizCompleted = true" :disabled="userAnswers[quizIndex] === null" class="flex-1 py-3 bg-green-600 text-white rounded-xl text-xs font-bold disabled:opacity-30">完成並看結果</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="px-2">
+                    <div class="card p-8 bg-white dark:bg-slate-700 border-4 border-blue-500 text-center space-y-6">
+                        <div class="text-6xl text-yellow-400"><i class="fas fa-trophy"></i></div>
+                        <h2 class="text-4xl font-black dark:text-white">{{ Math.round((quizScore/quizPool.length)*100) }}<span class="text-sm">分</span></h2>
+                        <p class="text-sm font-bold text-slate-500 dark:text-slate-300">{{ quizScore >= 8 ? '太棒了！你已經準備好養魚了！' : '建議再複習一下科學內容喔！' }}</p>
+                        <button @click="resetQuiz" class="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg">重新測驗</button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'setup'" class="space-y-6">
+                <button @click="activeTab = 'home'" class="text-blue-600 font-bold px-2"><i class="fas fa-arrow-left mr-2"></i>返回</button>
+                <div class="card p-5 bg-white dark:bg-slate-700 space-y-8 border dark:border-slate-600">
+                    <div v-for="(step, i) in setupDetailSteps" :key="i" class="relative pl-8 border-l-2 border-blue-500/30">
+                        <div class="absolute -left-[13px] top-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shadow-lg">{{i+1}}</div>
+                        <h3 class="font-bold text-lg dark:text-white leading-none">{{step.title}}</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-3">{{step.desc}}</p>
+                        <img :src="step.img" class="w-full h-36 object-cover rounded-2xl shadow-inner border dark:border-slate-500">
+                    </div>
+                </div>
+            </div>
+            
+            <div v-if="activeTab === 'health'" class="space-y-5">
+                <button @click="activeTab = 'home'" class="text-blue-600 font-bold px-2"><i class="fas fa-arrow-left mr-2"></i>返回</button>
+                <h2 class="text-2xl font-black dark:text-white px-2">病魚急救指南</h2>
+                <div class="space-y-4 px-2">
+                    <div class="card p-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500">
+                        <h3 class="text-red-800 dark:text-red-400 font-bold text-lg mb-3"><i class="fas fa-exclamation-triangle mr-2"></i>第一時間處理原則</h3>
+                        <ul class="text-sm space-y-3 text-red-700 dark:text-red-300 font-medium">
+                            <li>1. <b>立即隔離</b>：將病魚移至檢疫缸。</li>
+                            <li>2. <b>少量換水</b>：換掉缸內 1/4 的水。</li>
+                            <li>3. <b>停止餵食</b>：減少水質負荷。</li>
+                            <li>4. <b>加強曝氣</b>：增加溶氧。</li>
+                        </ul>
+                    </div>
+                    <div class="card p-6 bg-white dark:bg-slate-700 border dark:border-slate-600">
+                        <h3 class="font-bold dark:text-white mb-4 text-lg">常見病徵與對策</h3>
+                        <div class="space-y-4">
+                            <div v-for="sick in sicknessList" class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                                <p class="text-sm font-bold text-blue-600 mb-2">{{sick.type}}</p>
+                                <p class="text-sm dark:text-slate-300 leading-relaxed">{{sick.action}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'calc'" class="space-y-5 px-2">
+                <button @click="activeTab = 'home'" class="text-blue-600 font-bold"><i class="fas fa-arrow-left mr-2"></i>返回</button>
+                <h2 class="text-2xl font-black dark:text-white text-center">水量計算機</h2>
+                <div class="card p-6 space-y-6 bg-white dark:bg-slate-700 border dark:border-slate-600">
+                    <div v-for="(label, key) in {l:'魚缸長度', w:'魚缸寬度', h:'魚缸高度'}" :key="key">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{label}} (cm)</label>
+                        <input type="number" v-model="calc[key]" class="w-full border-b-2 border-slate-200 dark:border-slate-500 p-2 bg-transparent dark:text-white outline-none focus:border-blue-500">
+                    </div>
+                    <div class="bg-blue-600 p-6 rounded-2xl text-white shadow-lg text-center">
+                        <p class="text-[10px] opacity-70 font-bold uppercase tracking-wider mb-1">預估總水量</p>
+                        <p class="text-4xl font-black">{{ Math.round((calc.l * calc.w * calc.h) / 1000) }} <span class="text-lg font-normal">L</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'fish'" class="space-y-4">
+                <h2 class="text-2xl font-black dark:text-white px-2">熱帶魚智慧百科</h2>
+                <div class="grid grid-cols-1 gap-4">
+                    <div v-for="fish in fishList" :key="fish.name" class="card overflow-hidden flex items-start p-4 border dark:border-slate-600 bg-white dark:bg-slate-700">
+                        <img :src="fish.imgUrl" class="w-20 h-20 object-cover rounded-xl mr-4 bg-slate-100">
+                        <div class="flex-grow">
+                            <h3 class="font-black text-lg text-blue-900 dark:text-blue-300 leading-none">{{ fish.name }}</h3>
+                            <p class="text-[10px] text-gray-400 italic mb-2">{{ fish.scientific }}</p>
+                            <p class="text-xs text-gray-600 dark:text-slate-300 leading-tight">{{ fish.desc }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <nav class="fixed bottom-0 max-w-md w-full bg-white dark:bg-slate-800 border-t dark:border-slate-700 flex justify-around p-3 z-50">
+            <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" :class="activeTab === tab.id ? 'text-blue-600' : 'text-gray-400'" class="flex flex-col items-center flex-1">
+                <i :class="tab.icon" class="text-lg"></i>
+                <span class="text-[10px] font-bold mt-1">{{ tab.label }}</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue
+        createApp({
+            setup() {
+                const activeTab = ref('home')
+                const isDark = ref(false)
+                const calc = ref({ l: 60, w: 30, h: 36 })
+                
+                // 測驗相關 Logic
+                const quizStarted = ref(false)
+                const quizIndex = ref(0)
+                const quizScore = ref(0)
+                const quizCompleted = ref(false)
+                const userAnswers = ref(new Array(11).fill(null))
+
+                const cycleInfo = [
+                    { title: "劇毒：氨 (NH3)", desc: "來源於魚隻糞便、殘餌。對魚具極高腐蝕性，是開缸死魚的主因。", color: "bg-red-500" },
+                    { title: "中等毒：亞硝酸鹽 (NO2)", desc: "由亞硝酸菌分解氨產生。會導致魚隻血液缺氧。即便微量也是負擔。", color: "bg-orange-400" },
+                    { title: "低毒：硝酸鹽 (NO3)", desc: "由硝化菌轉化亞硝酸鹽產生。是水草的養分，通常靠定期換水移除。", color: "bg-green-500" }
+                ]
+
+                const quizPool = [
+                    { q: "當水質測試工具顯示哪一項非 0 時，對魚隻最危險？", a: ["NO3 (硝酸鹽)", "NH3 (氨)"], r: 1 },
+                    { q: "新買的魚缸與底砂，應該用什麼清洗？", a: ["洗碗精", "純清水"], r: 1 },
+                    { q: "為什麼不能直接用剛接出來的自來水養魚？", a: ["含有氯氣", "溫度太低"], r: 0 },
+                    { q: "「對溫」的主要目的是什麼？", a: ["洗乾淨魚身", "防止溫差造成休克"], r: 1 },
+                    { q: "硝化菌主要居住在哪裡？", a: ["水中游動", "過濾材（陶瓷環）表面"], r: 1 },
+                    { q: "水質突然變白濁時，最不建議採取的行動？", a: ["大量投餵營養品", "停止餵食並換水"], r: 0 },
+                    { q: "「對水」的過程大約建議持續多久？", a: ["5秒鐘", "20-30分鐘分批添加"], r: 1 },
+                    { q: "開缸培菌期間，是否需要開啟過濾器？", a: ["是，必須 24 小時運轉", "否，等入魚再開"], r: 0 },
+                    { q: "清洗濾材時，應該用什麼水？", a: ["滾燙開水", "魚缸舊水或除氯水"], r: 1 },
+                    { q: "健康的魚隻，其呼吸頻率應該是？", a: ["平緩自然", "在水面急促張口"], r: 0 },
+                    { q: "新缸培菌（養水）最少建議天數？", a: ["10 分鐘", "3-7 天"], r: 1 }
+                ]
+
+                const handleQuiz = (choice) => {
+                    userAnswers.value[quizIndex.value] = choice
+                    let currentScore = 0
+                    userAnswers.value.forEach((ans, idx) => {
+                        if (ans === quizPool[idx].r) currentScore++
+                    })
+                    quizScore.value = currentScore
+                }
+
+                const resetQuiz = () => {
+                    quizStarted.value = false; quizIndex.value = 0; quizScore.value = 0;
+                    quizCompleted.value = false; userAnswers.value = new Array(11).fill(null);
+                }
+
+                const setupDetailSteps = [
+                    { title: "設備清潔", desc: "僅用清水洗淨，禁止化學洗劑。", img: "fish-tank-glass-clean-2.png" },
+                    { title: "造景與注水", desc: "配置底砂與造景，緩慢注水。", img: "S27e5f7047806409e9180269f1beb615dx.png" },
+                    { title: "曝氣除氯", desc: "開啟過濾運轉 24 小時去除氯氣。", img: "will-chlorine-in-tap-water-evaporate-if-i-leave-the-tap-v0-viaromfoyote1.png" },
+                    { title: "培菌養水", desc: "添加硝化菌，維持 3-7 天運轉。", img: "213526e5-1656-4bd8-a6fd-c07f0f4974a9.jpg" },
+                    { title: "正式入魚", desc: "對溫對水，降低環境衝擊。", img: "IMG_6655-1024x768.jpg" }
+                ]
+
+                 const fishList = ref([
+                    { name: '日光燈魚', scientific: 'Paracheirodon innesi', temp: '22-28°C', ph: 'pH 5.5-7.0', imgUrl: 'image_1.png', desc: '性情溫和，適合群游的紅藍燈魚。' },
+                    { name: '多色孔雀魚', scientific: 'Poecilia reticulata', temp: '20-30°C', ph: 'pH 7.0-8.5', imgUrl: 'image_2.png', desc: '新手首選，繁殖力強，花色多樣。' },
+                    { name: '泰國鬥魚', scientific: 'Betta splendens', temp: '24-30°C', ph: 'pH 6.5-7.5', imgUrl: 'image_3.png', desc: '美艷好戰，建議單單獨飼養。' },
+                    { name: '斑馬魚', scientific: 'Danio rerio', temp: '18-28°C', ph: 'pH 6.5-7.5', imgUrl: 'image_5.png', desc: '活動性極強，耐低溫，適合新手。' },
+                    { name: '神仙魚', scientific: 'Pterophyllum scalare', temp: '24-30°C', ph: 'pH 6.5-7.5', imgUrl: 'image_6.png', desc: '优雅但具攻擊性，需足夠空間。' },
+                    { name: '紅十字魚', scientific: 'Hemigrammus rhodostomus', temp: '22-28°C', ph: 'pH 5.5-7.0', imgUrl: 'image_7.png', desc: '以紅色的頭部著稱，是群游極佳。' },
+                    { name: '七彩神仙魚', scientific: 'Symphysodon sp.', temp: '26-32°C', ph: 'pH 5.0-6.5', imgUrl: 'image_8.png', desc: '高端魚種，對水質和溫度要求極高。' },
+                    { name: '黑殼蝦', scientific: 'Neocaridina davidi', temp: '15-28°C', ph: 'pH 6.5-7.5', imgUrl: 'image_9.png', desc: '除藻大師，適合與溫和的小型魚混養。' },
+                    { name: '蘋果螺', scientific: 'Planorbidae', temp: '20-28°C', ph: 'pH 7.0-8.5', imgUrl: 'image_10.png', desc: '清理殘餌，繁殖快，外殼色彩多樣。' },
+                    { name: '紅尾夢幻旗', scientific: 'Hyphessobrycon eques', temp: '22-28°C', ph: 'pH 5.5-7.0', imgUrl: 'image_11.png', desc: '顏色火紅，具輕微攻擊性，需群養。' },
+                    { name: '小精靈魚', scientific: 'Otocinclus affinis', temp: '22-28°C', ph: 'pH 6.5-7.5', imgUrl: 'image_12.png', desc: '專業除藻工作魚，需維持穩定水質。' },
+                    { name: '熊貓老鼠魚', scientific: 'Corydoras panda', temp: '20-26°C', ph: 'pH 6.5-7.5', imgUrl: 'image_13.png', desc: '溫和可愛的底棲魚，需使用細沙底床。' }
+                ])
+
+                const sicknessList = [
+                    { type: "白點病", action: "緩慢升溫至 30°C，並加強曝氣。" },
+                    { type: "爛尾 / 爛鰭", action: "改善水質，少量添加水族專用鹽。" }
+                ]
+
+                const tabs = [
+                    { id: 'home', label: '首頁', icon: 'fas fa-home' },
+                    { id: 'fish', label: '百科', icon: 'fas fa-book-open' },
+                    { id: 'calc', label: '計算', icon: 'fas fa-calculator' },
+                    { id: 'health', label: '健康', icon: 'fas fa-heartbeat' }
+                ]
+
+                return { 
+                    activeTab, isDark, calc, tabs, setupDetailSteps, fishList, sicknessList,
+                    cycleInfo, quizStarted, quizIndex, quizScore, quizPool, quizCompleted, userAnswers,
+                    handleQuiz, resetQuiz,
+                    toggleDark: () => { isDark.value = !isDark.value; document.documentElement.classList.toggle('dark') } 
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
